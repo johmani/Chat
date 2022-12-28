@@ -1,4 +1,4 @@
-package ServerClient;
+package serverClient;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -17,7 +17,7 @@ public class Client implements Runnable
     {
         try
         {
-            client = new Socket("localhost",9999);
+            client = new Socket("localhost",4000);
             out = new PrintWriter(client.getOutputStream(),true);
             in = new BufferedReader(new InputStreamReader(client.getInputStream()));
 
@@ -40,29 +40,26 @@ public class Client implements Runnable
     public void ShutDowm()
     {
         done = true;
-        try {
+        try
+        {
             in.close();
             out.close();
-            if (!client.isClosed())
-            {
-                client.close();
-            }
+            if (!client.isClosed())  client.close();
         }
-        catch (IOException e)
-        {
-            //ignore
-        }
+        catch (IOException e){ /* ignore */}
     }
 
     class InputHandler implements Runnable
     {
+        BufferedReader inReader;
 
         @Override
         public void run()
         {
            try
            {
-               BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
+               inReader = new BufferedReader(new InputStreamReader(System.in));
+
                while (!done)
                {
                    String  message = inReader.readLine();
@@ -84,7 +81,6 @@ public class Client implements Runnable
            }
         }
     }
-
 
     public static void main(String[] args)
     {

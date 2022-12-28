@@ -1,5 +1,5 @@
-package InterFace.GUI;
-import DataBase.MySqlConnection;
+package userInterFace.GUI;
+import dataBase.MySqlConnection;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,12 +16,17 @@ public class LoginMenu extends JFrame implements ActionListener {
     JPasswordField passwordTextField = new JPasswordField();
     JButton loginButton = new JButton("LOGIN");
     JCheckBox showPassword = new JCheckBox("Show Password");
-
     JLabel not_a_user = new JLabel("not a user?");
     JButton signupButton = new JButton("Signup");
 
     LoginMenu()
     {
+        setTitle("Login");
+        setVisible(true);
+        setBounds(10, 10, 370, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setResizable(false);
+
         setLayoutManager();
         setLocationAndSize();
         addComponentsToContainer();
@@ -33,7 +38,8 @@ public class LoginMenu extends JFrame implements ActionListener {
         container.setLayout(null);
     }
 
-    public void setLocationAndSize() {
+    public void setLocationAndSize()
+    {
         numberLabel.setBounds(50, 150, 100, 30);
         passwordLabel.setBounds(50, 220, 100, 30);
         numberTextField.setBounds(150, 150, 150, 30);
@@ -84,8 +90,11 @@ public class LoginMenu extends JFrame implements ActionListener {
 
         if (e.getSource() == signupButton)
         {
-            System.out.println("hi");
+
         }
     }
+
+
+
 
 }
