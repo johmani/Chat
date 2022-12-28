@@ -111,6 +111,7 @@ public class Server implements Runnable
         private void quitCMD(String request)
         {
             shutDown(user.userNumber());
+            System.out.println(user.userNumber() + " has quit");
         }
 
         private void loginCMD(String request)
@@ -130,6 +131,7 @@ public class Server implements Runnable
                     user.password(req[2]);
 
                     connections.put(user.userNumber(),connection);
+                    System.out.println(user.userNumber() + " logged in Successfully");
                 }
             }
             else
@@ -147,6 +149,7 @@ public class Server implements Runnable
                 String password = req[2];
                 String response = MySqlConnection.Signup(number,password);
                 out.println(response);
+                System.out.println(number + " Register Successfully");
             }
             else
             {
@@ -179,8 +182,6 @@ public class Server implements Runnable
                         {
                             out.println("-"+ from + " : " + message);
                         }
-
-
                         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
                         LocalDateTime now = LocalDateTime.now();
                         String chatName = from +","+ to;
@@ -200,7 +201,7 @@ public class Server implements Runnable
             }
             else
             {
-                out.println("You must login first , use /login-number-password to login");
+                out.println("you must login first , use /login-number-password to login");
             }
         }
 
