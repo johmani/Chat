@@ -205,7 +205,7 @@ public class Server implements Runnable
             }
         }
 
-        private  void readCMD(String request)
+        private  void loadCMD(String request)
         {
            if(logeden)
            {
@@ -257,7 +257,7 @@ public class Server implements Runnable
                     }
                     else if(request.startsWith("/load"))
                     {
-                        readCMD(request);
+                        loadCMD(request);
                     }
                     else
                     {
