@@ -156,7 +156,7 @@ public class Server implements Runnable
             }
         }
 
-        private  void chatCMD(String request)
+        private  void sendCMD(String request)
         {
             if(logeden)
             {
@@ -167,7 +167,7 @@ public class Server implements Runnable
                     String to = req[1];
                     String message = req[2];
 
-                    String  response = MySqlConnection.IsRegister(to);
+                    String  response = MySqlConnection.isRegister(to);
 
                     if(response.equals("isRegister"))
                     {
@@ -213,7 +213,7 @@ public class Server implements Runnable
                {
                    String to = req[1];
                    String chat = user.userNumber()+","+to;
-                   ArrayList<String> messages = MySqlConnection.GetMessages(chat);
+                   ArrayList<String> messages = MySqlConnection.getMessages(chat);
                    for(String message : messages)
                    {
                        out.println(message);
@@ -224,6 +224,30 @@ public class Server implements Runnable
            {
                out.println("You must login first , use /login-number-password to login");
            }
+        }
+
+        private  void getConversations(String request)
+        {
+            if(logeden)
+            {
+                String[] req = request.split("-");
+                if(req.length == 1)
+                {
+                    ArrayList<String> conversations = MySqlConnection.getConversations(user.userNumber());
+                    for(String message : conversations)
+                    {
+                        out.println(message);
+                    }
+                }
+                else
+                {
+                    out.println("your request is invalid");
+                }
+            }
+            else
+            {
+                out.println("You must login first , use /login-number-password to login");
+            }
         }
 
         @Override
@@ -238,25 +262,29 @@ public class Server implements Runnable
 
                 while ((request = in.readLine()) != null)
                 {
-                    if(request.startsWith("/quit"))
+                    if(request.startsWith(Requests.QUIT))
                     {
                         quitCMD(request);
                     }
-                    else if(request.startsWith("/login"))
+                    else if(request.startsWith(Requests.LOGIN))
                     {
                         loginCMD(request);
                     }
-                    else if(request.startsWith("/signup"))
+                    else if(request.startsWith(Requests.SIGNUP))
                     {
                         signupCMD(request);
                     }
-                    else if(request.startsWith("/chat"))
+                    else if(request.startsWith(Requests.CHAT))
                     {
-                        chatCMD(request);
+                        sendCMD(request);
                     }
-                    else if(request.startsWith("/load"))
+                    else if(request.startsWith(Requests.LOAD_MESSAGES))
                     {
                         loadCMD(request);
+                    }
+                    else if(request.startsWith(Requests.LOAD_CHATS))
+                    {
+                        getConversations(request);
                     }
                     else
                     {

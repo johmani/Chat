@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class MySqlConnection
 {
-    public static Connection Connect()
+    public static Connection connect()
     {
         Connection con = null;
         try
@@ -20,11 +20,10 @@ public class MySqlConnection
         return con;
     }
 
-
-    public static String IsAvailable(String number)
+    public static String isAvailable(String number)
     {
         Statement stmt = null;
-        Connection con = Connect();
+        Connection con = connect();
         if (con != null)
         {
             try
@@ -44,10 +43,10 @@ public class MySqlConnection
         return "error";
     }
 
-    public static String IsRegister(String number)
+    public static String isRegister(String number)
     {
         Statement stmt = null;
-        Connection con = Connect();
+        Connection con = connect();
         if (con != null)
         {
             try
@@ -69,31 +68,21 @@ public class MySqlConnection
     public static String Signup(String number ,String password)
     {
         Statement statement = null;
-        Connection con = Connect();
-        String id="-1";
-
+        Connection con = connect();
         if (con != null)
         {
             try
             {
-                String availability = IsAvailable(number);
-
+                String availability = isAvailable(number);
                 if(!availability.equals("available"))  return availability;
 
                 statement = con.createStatement();
-                int res = statement.executeUpdate("INSERT INTO user (number,password) VALUES ( '"+number+"','"+password+"')",Statement.RETURN_GENERATED_KEYS);
-                ResultSet rs = statement.getGeneratedKeys();
-
-                if (rs.next())
-                {
-                    id = rs.getInt(1)+" : " + number;
-                }
+                statement.executeUpdate("INSERT INTO user (number,password) VALUES ( '"+number+"','"+password+"')");
             }
             catch (SQLException throwable)
             {
                 throwable.printStackTrace();
             }
-
             return "successfully registered";
         }
         return "connection error";
@@ -102,7 +91,7 @@ public class MySqlConnection
     public static String Login(String number ,String pass)
     {
         Statement statement = null;
-        Connection con = Connect();
+        Connection con = connect();
 
         if (con != null)
         {
@@ -133,11 +122,10 @@ public class MySqlConnection
         return "connection error";
     }
 
-
     public static String chickChat(String chatName)
     {
         Statement statement = null;
-        Connection con = Connect();
+        Connection con = connect();
         if (con != null)
         {
             try
@@ -159,10 +147,85 @@ public class MySqlConnection
         return "chickChat error";
     }
 
+    public static String conversationId2Name(int  conversationId)
+    {
+        Statement statement = null;
+        Connection con = connect();
+        String name = "";
+        if (con != null)
+        {
+            try
+            {
+                statement = con.createStatement();
+                ResultSet userIDResultSet = statement.executeQuery("SELECT * FROM `conversation` WHERE conversation_id=\""+conversationId+"\" ");
+                if(userIDResultSet.next())
+                {
+                    name =   userIDResultSet.getString("name");
+                    return name;
+                }
+            }
+            catch (SQLException throwable)
+            {
+                throwable.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    public static int userNumber2Id(String number)
+    {
+        Statement statement = null;
+        Connection con = connect();
+        int user_id = -1;
+        if (con != null)
+        {
+            try
+            {
+                statement = con.createStatement();
+                ResultSet userIDResultSet = statement.executeQuery("SELECT * FROM `user` WHERE number=\""+number+"\" ");
+                if(userIDResultSet.next())
+                {
+                    user_id =   userIDResultSet.getInt("user_id");
+                    return user_id;
+                }
+            }
+            catch (SQLException throwable)
+            {
+                throwable.printStackTrace();
+            }
+        }
+        return -1;
+    }
+
+    public static int conversationName2Id(String name)
+    {
+        Statement statement = null;
+        Connection con = connect();
+        int conversationId = -1;
+        if (con != null)
+        {
+            try
+            {
+                statement = con.createStatement();
+                ResultSet conversationResultSet = statement.executeQuery("SELECT * FROM `conversation` WHERE name=\""+name+"\" ");
+                if(conversationResultSet.next())
+                {
+                    conversationId =   conversationResultSet.getInt("conversation_id");
+                    return conversationId;
+                }
+            }
+            catch (SQLException throwable)
+            {
+                throwable.printStackTrace();
+            }
+        }
+        return -1;
+    }
+
     public static String sendMessage(MessageModel modleMessage)
     {
         Statement statement = null;
-        Connection con = Connect();
+        Connection con = connect();
         if (con != null)
         {
             try
@@ -172,37 +235,28 @@ public class MySqlConnection
                 String text = modleMessage.message();
                 String sentDataTime = modleMessage.sentDataTime();
                 String name = modleMessage.chatName();
-                int userID = -1;
-                int conversationId = -1;
+                int user_id = -1;
+                int conversation_id = -1;
 
                 String res = chickChat(name);
                 if(res.equals("available"))
                 {
                     statement.executeUpdate("INSERT INTO conversation (name) VALUES ( '" + name + "')");
 
-                    ResultSet conversationResultSet = statement.executeQuery("SELECT * FROM `conversation` WHERE name=\""+name+"\" ");
-                    if(conversationResultSet.next())
-                    {
-                        conversationId =   conversationResultSet.getInt("conversation_id");
-                        statement.executeUpdate("INSERT INTO message (from_number,text,sent_datetime,conversation_id) VALUES ( '"+from+"','"+ text+"','"+ sentDataTime +"','"+ conversationId +"')");
-                    }
+                    conversation_id =   conversationName2Id(name);
+                    statement.executeUpdate("INSERT INTO message (from_number,text,sent_datetime,conversation_id) VALUES ( '"+from+"','"+ text+"','"+ sentDataTime +"','"+ conversation_id +"')");
 
+                    user_id = userNumber2Id(from);
+                    statement.executeUpdate("INSERT INTO groub_member (user_id,conversation_id) VALUES ( '" + user_id + "','"+conversation_id +"')");
 
-                    ResultSet userIDResultSet = statement.executeQuery("SELECT * FROM `user` WHERE number=\""+from+"\" ");
-                    if(userIDResultSet.next())
-                    {
-                        userID =   userIDResultSet.getInt("user_id");
-                        statement.executeUpdate("INSERT INTO groub_member (user_id,conversation_id) VALUES ( '" + userID + "','"+conversationId +"')");
-                    }
+                    String toNumber = name.split(",")[1];
+                    int user_id2 = userNumber2Id(toNumber);
+                    statement.executeUpdate("INSERT INTO groub_member (user_id,conversation_id) VALUES ( '" + user_id2 + "','"+conversation_id +"')");
                 }
                 else
                 {
-                    ResultSet conversationResultSet = statement.executeQuery("SELECT * FROM `conversation` WHERE name=\""+res+"\" ");
-                    if(conversationResultSet.next())
-                    {
-                        conversationId =   conversationResultSet.getInt("conversation_id");
-                        statement.executeUpdate("INSERT INTO message (from_number,text,sent_datetime,conversation_id) VALUES ( '"+from+"','"+ text+"','"+ sentDataTime +"','"+ conversationId +"')");
-                    }
+                    conversation_id =   conversationName2Id(res);
+                    statement.executeUpdate("INSERT INTO message (from_number,text,sent_datetime,conversation_id) VALUES ( '"+from+"','"+ text+"','"+ sentDataTime +"','"+ conversation_id +"')");
                 }
             }
             catch (SQLException throwable)
@@ -214,12 +268,10 @@ public class MySqlConnection
         return "connection error";
     }
 
-
-
-    public  static ArrayList<String> GetMessages(String chatName)
+    public  static ArrayList<String> getMessages(String chatName)
     {
         Statement statement = null;
-        Connection con = Connect();
+        Connection con = connect();
         if (con != null)
         {
             try
@@ -246,6 +298,39 @@ public class MySqlConnection
                     messages.add(text);
                 }
                 return messages;
+            }
+            catch (SQLException throwable)
+            {
+                throwable.printStackTrace();
+            }
+        }
+        return  null;
+    }
+
+    public  static ArrayList<String> getConversations(String userNumber)
+    {
+        Statement statement = null;
+        Connection con = connect();
+        if (con != null)
+        {
+            try
+            {
+                statement = con.createStatement();
+
+                if(isRegister(userNumber).equals("isRegister"))
+                {
+                    int user_id = userNumber2Id(userNumber);
+
+                    ArrayList<String> conversation_ids = new ArrayList<>();
+                    ResultSet groub_memberResultSet = statement.executeQuery("SELECT * FROM `groub_member` WHERE user_id=\""+user_id+"\" ");
+                    while (groub_memberResultSet.next())
+                    {
+                        int conversation_id =   groub_memberResultSet.getInt("conversation_id");
+                        String name = conversationId2Name(conversation_id);
+                        conversation_ids.add(name);
+                    }
+                    return conversation_ids;
+                }
             }
             catch (SQLException throwable)
             {
