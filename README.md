@@ -8,7 +8,7 @@
 - Integrity
 - Non-Repudiation
 - Authentication,Authorization
-- End-to-EndEncryption
+- End-to-End Encryption
 
 ### requests
 - /login-userNumber-password
