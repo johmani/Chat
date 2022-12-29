@@ -1,7 +1,6 @@
 package dataBase;
 
 import model.MessageModel;
-
 import java.sql.*;
 import java.util.ArrayList;
 
@@ -22,7 +21,6 @@ public class MySqlConnection
     }
 
 
-
     public static String IsAvailable(String number)
     {
         Statement stmt = null;
@@ -37,7 +35,8 @@ public class MySqlConnection
                 if(user.next()) return "user number already token";
                 else return "available";
 
-            } catch (SQLException throwables)
+            }
+            catch (SQLException throwables)
             {
                 throwables.printStackTrace();
             }
@@ -173,17 +172,27 @@ public class MySqlConnection
                 String text = modleMessage.message();
                 String sentDataTime = modleMessage.sentDataTime();
                 String name = modleMessage.chatName();
+                int userID = -1;
                 int conversationId = -1;
 
                 String res = chickChat(name);
                 if(res.equals("available"))
                 {
                     statement.executeUpdate("INSERT INTO conversation (name) VALUES ( '" + name + "')");
+
                     ResultSet conversationResultSet = statement.executeQuery("SELECT * FROM `conversation` WHERE name=\""+name+"\" ");
                     if(conversationResultSet.next())
                     {
                         conversationId =   conversationResultSet.getInt("conversation_id");
                         statement.executeUpdate("INSERT INTO message (from_number,text,sent_datetime,conversation_id) VALUES ( '"+from+"','"+ text+"','"+ sentDataTime +"','"+ conversationId +"')");
+                    }
+
+
+                    ResultSet userIDResultSet = statement.executeQuery("SELECT * FROM `user` WHERE number=\""+from+"\" ");
+                    if(userIDResultSet.next())
+                    {
+                        userID =   userIDResultSet.getInt("user_id");
+                        statement.executeUpdate("INSERT INTO groub_member (user_id,conversation_id) VALUES ( '" + userID + "','"+conversationId +"')");
                     }
                 }
                 else

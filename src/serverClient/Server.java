@@ -22,7 +22,6 @@ public class Server implements Runnable
     private ExecutorService pool;
     private boolean done;
 
-
     public Server()
     {
         connections = new Hashtable<>();
@@ -270,14 +269,10 @@ public class Server implements Runnable
                 shutDown();
             }
         }
-
-
         public void sendMessage(String message)
         {
             out.println(message);
         }
-
-
         public void shutDown()
         {
             try
