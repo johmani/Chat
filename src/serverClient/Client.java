@@ -17,7 +17,7 @@ public class Client implements Runnable
     {
         try
         {
-            client = new Socket("localhost",4000);
+            client = new Socket("4.tcp.eu.ngrok.io",14306);
             out = new PrintWriter(client.getOutputStream(),true);
             in = new BufferedReader(new InputStreamReader(client.getInputStream()));
 

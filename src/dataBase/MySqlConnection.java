@@ -131,7 +131,6 @@ public class MySqlConnection
                 throwables.printStackTrace();
             }
         }
-
         return "connection error";
     }
 
