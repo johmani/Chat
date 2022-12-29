@@ -13,8 +13,9 @@
 ### requests
 - /login-userNumber-password
 - /signup-userNumber-password
-- /chat-toNumber-message // to send message to toNumber
-- /load-toNumber // to load conversation
+- /send-toNumber-message // to send message to toNumber
+- /messages-Number // to load conversation with Number
+- /chats to show all chats
 - /quit // to quit!
 
 ### Mysql dataBase 
