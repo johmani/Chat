@@ -39,6 +39,7 @@ public class Server implements Runnable
             while (!done)
             {
                 Socket client = server.accept();
+                System.out.println("New client connected "+ client.getInetAddress().getHostAddress());
                 ConnectionHandler handler = new ConnectionHandler(client);
 
                 int n = new Random().nextInt(1000000);
@@ -204,7 +205,7 @@ public class Server implements Runnable
             }
         }
 
-        private  void loadCMD(String request)
+        private  void loadMessagesCMD(String request)
         {
            if(logeden)
            {
@@ -226,7 +227,7 @@ public class Server implements Runnable
            }
         }
 
-        private  void getConversations(String request)
+        private  void loadConversationsCMD(String request)
         {
             if(logeden)
             {
@@ -280,11 +281,11 @@ public class Server implements Runnable
                     }
                     else if(request.startsWith(Requests.LOAD_MESSAGES))
                     {
-                        loadCMD(request);
+                        loadMessagesCMD(request);
                     }
                     else if(request.startsWith(Requests.LOAD_CHATS))
                     {
-                        getConversations(request);
+                        loadConversationsCMD(request);
                     }
                     else
                     {
