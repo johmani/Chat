@@ -1,7 +1,5 @@
 package serverClient;
 
-//import security.SymmetricEncryption;
-
 import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -14,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
-import java.util.ArrayList;
+
 import java.util.Base64;
 
 public class Client implements Runnable
