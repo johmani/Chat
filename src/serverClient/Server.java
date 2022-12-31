@@ -275,7 +275,7 @@ public class Server implements Runnable
                     {
                         signupCMD(request);
                     }
-                    else if(request.startsWith(Requests.CHAT))
+                    else if(request.startsWith(Requests.SEND))
                     {
                         sendCMD(request);
                     }
