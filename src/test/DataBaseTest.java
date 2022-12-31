@@ -1,7 +1,6 @@
 package test;
 
 import dataBase.MySqlConnection;
-import model.MessageModel;
 
 import java.util.ArrayList;
 

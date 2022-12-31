@@ -1,6 +1,7 @@
 package dataBase;
 
 import model.MessageModel;
+
 import java.sql.*;
 import java.util.ArrayList;
 
@@ -104,7 +105,7 @@ public class MySqlConnection
                 {
                     if(pass.equals(user.getString("password")))
                     {
-                        return "Successfully logged in" + " :  " + user.getString("number");
+                        return "Successfully logged in" + " :  " + user.getString("number") +","+user.getString("password") ;
                     }
                     else
                     {
@@ -195,6 +196,31 @@ public class MySqlConnection
             }
         }
         return -1;
+    }
+
+    public static String userNumber2password(String number)
+    {
+        Statement statement = null;
+        Connection con = connect();
+        String password = "";
+        if (con != null)
+        {
+            try
+            {
+                statement = con.createStatement();
+                ResultSet passwordDResultSet = statement.executeQuery("SELECT * FROM `user` WHERE number=\""+number+"\" ");
+                if(passwordDResultSet.next())
+                {
+                    password = passwordDResultSet.getString("password");
+                    return password;
+                }
+            }
+            catch (SQLException throwable)
+            {
+                throwable.printStackTrace();
+            }
+        }
+        return null;
     }
 
     public static int conversationName2Id(String name)

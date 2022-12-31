@@ -3,6 +3,7 @@ package serverClient;
 import dataBase.MySqlConnection;
 import model.MessageModel;
 import model.UserModel;
+import javax.crypto.SecretKey;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -22,6 +23,8 @@ public class Server implements Runnable
     private ExecutorService pool;
     private boolean done;
 
+    private SecretKey symmetricKey;
+
     public Server()
     {
         connections = new Hashtable<>();
@@ -39,7 +42,7 @@ public class Server implements Runnable
             while (!done)
             {
                 Socket client = server.accept();
-                System.out.println("New client connected "+ client.getInetAddress().getHostAddress());
+
                 ConnectionHandler handler = new ConnectionHandler(client);
 
                 int n = new Random().nextInt(1000000);
@@ -47,6 +50,8 @@ public class Server implements Runnable
 
                 connections.put(handler.user.userNumber(),handler);
                 pool.execute(handler);
+
+                System.out.println("New client connected " + handler.user.userNumber() + ",Host :"+  client.getInetAddress().getHostAddress());
             }
         }
         catch (Exception e)
@@ -100,7 +105,9 @@ public class Server implements Runnable
         private BufferedReader in;
         private PrintWriter out;
         private UserModel user;
-        private boolean logeden = false;
+        private boolean loggedin;
+        private SecretKey symmetricKey;
+
 
         public ConnectionHandler(Socket client)
         {
@@ -110,37 +117,37 @@ public class Server implements Runnable
 
         private void quitCMD(String request)
         {
-            shutDown(user.userNumber());
             System.out.println(user.userNumber() + " has quit");
+            shutDown(user.userNumber());
         }
 
-        private void loginCMD(String request)
+        private String loginCMD(String request) throws Exception
         {
             String[] req = request.split("-");
             if(req.length == 3)
             {
                 String response = MySqlConnection.Login(req[1],req[2]);
-                out.println(response);
 
                 if(response.startsWith("Successfully"))
                 {
-                    logeden = true;
+                    loggedin = true;
                     ConnectionHandler connection = connections.remove(user.userNumber());
 
                     user.userNumber(req[1]);
                     user.password(req[2]);
 
                     connections.put(user.userNumber(),connection);
-                    System.out.println(user.userNumber() + " logged in Successfully");
+                    symmetricKey = Symmetric.createAESKey(user.password());
                 }
+                return  response;
             }
             else
             {
-                out.println("your request is invalid");
+                return "invalid request";
             }
         }
 
-        private void signupCMD(String request)
+        private String signupCMD(String request)
         {
             String[] req = request.split("-");
             if(req.length == 3)
@@ -148,18 +155,17 @@ public class Server implements Runnable
                 String number = req[1];
                 String password = req[2];
                 String response = MySqlConnection.Signup(number,password);
-                out.println(response);
-                System.out.println(number + " Register Successfully");
+                return  response;
             }
             else
             {
-                out.println("your request is invalid");
+                return "invalid request";
             }
         }
 
-        private  void sendCMD(String request)
+        private String sendCMD(String request) throws Exception
         {
-            if(logeden)
+            if(loggedin)
             {
                 String[] req = request.split("-");
                 if(req.length == 3)
@@ -172,42 +178,46 @@ public class Server implements Runnable
 
                     if(response.equals("isRegister"))
                     {
+                        String toPassword = MySqlConnection.userNumber2password(to);
+                        SecretKey toSymmetricKey = Symmetric.createAESKey(toPassword);
 
-                        if(connections.get(to)!=null)
-                        {
-                           broadCast(to,from + " : " + message);
-                           out.println("+"+ from + " : " + message);
-                        }
-                        else
-                        {
-                            out.println("-"+ from + " : " + message);
-                        }
                         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
                         LocalDateTime now = LocalDateTime.now();
                         String chatName = from +","+ to;
 
                         MessageModel newMessage = new MessageModel(from,message,dtf.format(now),chatName);
                         MySqlConnection.sendMessage(newMessage);
+
+                        if(connections.get(to)!=null)
+                        {
+                            broadCast(to, Symmetric.encrypt( from + " : " + message, toSymmetricKey));
+                            return "+"+ from + " : " + message;
+                        }
+                        else
+                        {
+                            return  "-"+ from + " : " + message;
+                        }
+
                     }
                     else
                     {
-                        out.println(response);
+                        return response;
                     }
                 }
                 else
                 {
-                    out.println("your request is invalid");
+                    return "invalid request";
                 }
             }
             else
             {
-                out.println("you must login first , use /login-number-password to login");
+                return "you must login first , use /login-number-password to login";
             }
         }
 
-        private  void loadMessagesCMD(String request)
+        private ArrayList<String> loadMessagesCMD(String request)
         {
-           if(logeden)
+           if(loggedin)
            {
                String[] req = request.split("-");
                if(req.length == 2)
@@ -215,39 +225,45 @@ public class Server implements Runnable
                    String to = req[1];
                    String chat = user.userNumber()+","+to;
                    ArrayList<String> messages = MySqlConnection.getMessages(chat);
-                   for(String message : messages)
-                   {
-                       out.println(message);
-                   }
+                   return messages;
+               }
+               else
+               {
+                   ArrayList<String> res = new ArrayList<>();
+                   res.add("your request is invalid");
+                   return res;
                }
            }
            else
            {
-               out.println("You must login first , use /login-number-password to login");
+               ArrayList<String> res = new ArrayList<>();
+               res.add("You must login first , use /login-number-password to login");
+               return res;
            }
         }
 
-        private  void loadConversationsCMD(String request)
+        private ArrayList<String> loadConversationsCMD(String request)
         {
-            if(logeden)
+            if(loggedin)
             {
                 String[] req = request.split("-");
                 if(req.length == 1)
                 {
                     ArrayList<String> conversations = MySqlConnection.getConversations(user.userNumber());
-                    for(String message : conversations)
-                    {
-                        out.println(message);
-                    }
+                    return conversations;
                 }
                 else
                 {
-                    out.println("your request is invalid");
+                    ArrayList<String> res = new ArrayList<>();
+                    res.add("your request is invalid");
+                    return res;
                 }
             }
             else
             {
-                out.println("You must login first , use /login-number-password to login");
+                ArrayList<String> res = new ArrayList<>();
+                res.add("You must login first , use /login-number-password to login");
+                return res;
             }
         }
 
@@ -263,38 +279,64 @@ public class Server implements Runnable
 
                 while ((request = in.readLine()) != null)
                 {
+                    //System.out.print("request : " + request + " --> ");
+
                     if(request.startsWith(Requests.QUIT))
                     {
                         quitCMD(request);
+                        break;
                     }
                     else if(request.startsWith(Requests.LOGIN))
                     {
-                        loginCMD(request);
+                        String response = loginCMD(request);
+                        out.println(response);
                     }
                     else if(request.startsWith(Requests.SIGNUP))
                     {
-                        signupCMD(request);
-                    }
-                    else if(request.startsWith(Requests.CHAT))
-                    {
-                        sendCMD(request);
-                    }
-                    else if(request.startsWith(Requests.LOAD_MESSAGES))
-                    {
-                        loadMessagesCMD(request);
-                    }
-                    else if(request.startsWith(Requests.LOAD_CHATS))
-                    {
-                        loadConversationsCMD(request);
+                        String response =  signupCMD(request);
+                        out.println(response);
                     }
                     else
                     {
-                        out.println("your request is invalid");
+                        String requestDecrypt = Symmetric.decrypt(request,symmetricKey);
+                        System.out.println("request : " + request + " --> " + requestDecrypt);
+
+                        if(requestDecrypt.startsWith(Requests.SEND))
+                        {
+                            String response =  sendCMD(requestDecrypt);
+                            String mac = Symmetric.MAC(response,symmetricKey);
+                            out.println(Symmetric.encrypt(response,symmetricKey) + "mac" + mac);
+                        }
+                        else if(requestDecrypt.startsWith(Requests.LOAD_MESSAGES))
+                        {
+                            ArrayList<String> response = loadMessagesCMD(requestDecrypt);
+                            for (String message: response)
+                            {
+                                String mac = Symmetric.MAC(message,symmetricKey);
+                                out.println(Symmetric.encrypt(message,symmetricKey) + "mac" + mac);
+                            }
+                        }
+                        else if(requestDecrypt.startsWith(Requests.LOAD_CHATS))
+                        {
+                            ArrayList<String> response = loadConversationsCMD(requestDecrypt);
+                            for (String message: response)
+                            {
+                                String mac = Symmetric.MAC(message,symmetricKey);
+                                out.println(Symmetric.encrypt(message,symmetricKey) + "mac" + mac);
+                            }
+                        }
+                        else
+                        {
+                            String response = "your request is invalid";
+                            String mac = Symmetric.MAC(response,symmetricKey);
+                            out.println(Symmetric.encrypt(response,symmetricKey) + "mac" + mac);
+                        }
                     }
                 }
             }
-            catch (IOException e)
+            catch (Exception e)
             {
+                e.printStackTrace();
                 shutDown();
             }
         }
@@ -302,6 +344,7 @@ public class Server implements Runnable
         {
             out.println(message);
         }
+
         public void shutDown()
         {
             try
@@ -325,11 +368,10 @@ public class Server implements Runnable
                 connections.remove(key);
                 if (!client.isClosed())
                 {
-
                     client.close();
                 }
             }
-            catch (IOException e){/*ignore*/}
+            catch (IOException e){/* ignore */}
         }
     }
 
