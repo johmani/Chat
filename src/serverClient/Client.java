@@ -37,23 +37,24 @@ public class Client implements Runnable
             Thread thread = new Thread(inHandler);
             thread.start();
 
-            String inMessage;
-            while((inMessage = in.readLine()) != null)
+            String serverResponse;
+
+            while((serverResponse = in.readLine()) != null)
             {
-                if(inMessage.startsWith("Successfully logged in"))
+                if(serverResponse.startsWith("Successfully logged in"))
                 {
                     loggedin = true;
-                    String password = inMessage.split(",")[1];
+                    String password = serverResponse.split(",")[1];
                     symmetricKey = Symmetric.createAESKey(password);
-                    System.out.println(inMessage);
+                    System.out.println(serverResponse);
                 }
                 else if(loggedin)
                 {
-                    String response = inMessage.split("mac")[0];
+                    String response = serverResponse.split("mac")[0];
                     String decrypt = Symmetric.decrypt(response,symmetricKey);
 
                     String mac = Symmetric.MAC(decrypt,symmetricKey);
-                    String receivedMac = inMessage.split("mac")[1];
+                    String receivedMac = serverResponse.split("mac")[1];
 
                     if(mac.equals(receivedMac))
                     {
@@ -66,7 +67,7 @@ public class Client implements Runnable
                 }
                 else
                 {
-                    System.out.println(inMessage);
+                    System.out.println(serverResponse);
                 }
             }
         }
