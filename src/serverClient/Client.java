@@ -1,9 +1,9 @@
 package serverClient;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import javax.crypto.SecretKey;
+import javax.xml.bind.DatatypeConverter;
+import java.io.*;
 import java.net.Socket;
+import java.security.PublicKey;
 
 public class Client implements Runnable
 {
@@ -52,6 +52,8 @@ public class Client implements Runnable
     class InputHandler implements Runnable
     {
         BufferedReader inReader;
+        private SecretKey symmetricKey;
+
 
         @Override
         public void run()
@@ -59,6 +61,23 @@ public class Client implements Runnable
            try
            {
                inReader = new BufferedReader(new InputStreamReader(System.in));
+
+               ObjectInputStream objectInputStream = new ObjectInputStream(client.getInputStream());
+               PublicKey serverPublicKey = (PublicKey) objectInputStream.readObject();
+
+
+               System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(serverPublicKey.getEncoded()));
+
+//               // Generate session Key
+//               symmetricKey = symmetric.GenerateSessionKey();
+//               System.out.println("The Session Key is :" + DatatypeConverter.printHexBinary(symmetricKey.getEncoded()));
+//
+//               // Encrypt session key
+//               byte[] EncryptedKey = Hyper.Encrept(DatatypeConverter.printHexBinary(symmetricKey.getEncoded()),serverpublickey);
+//
+//               //send session key
+//               System.out.println("The Encrypted Session Key is :" + DatatypeConverter.printHexBinary(EncryptedKey));
+//               out.println(DatatypeConverter.printHexBinary(EncryptedKey));
 
                while (!done)
                {
@@ -75,7 +94,7 @@ public class Client implements Runnable
                    }
                }
            }
-           catch (IOException e)
+           catch (IOException | ClassNotFoundException e)
            {
                ShutDowm();
            }

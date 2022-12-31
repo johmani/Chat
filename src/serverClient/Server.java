@@ -3,12 +3,16 @@ package serverClient;
 import dataBase.MySqlConnection;
 import model.MessageModel;
 import model.UserModel;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import security.Hyper;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import javax.xml.bind.DatatypeConverter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyPair;
+import java.security.PublicKey;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -21,6 +25,7 @@ public class Server implements Runnable
     private ServerSocket server;
     private ExecutorService pool;
     private boolean done;
+    private KeyPair keyPair;
 
     public Server()
     {
@@ -35,6 +40,11 @@ public class Server implements Runnable
         {
             server = new ServerSocket(4000);
             pool = Executors.newCachedThreadPool();
+
+            keyPair =  Hyper.generateKeyPair();
+
+            System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(keyPair.getPublic().getEncoded()));
+            System.out.println("The Private Key is: " + DatatypeConverter.printHexBinary(keyPair.getPrivate().getEncoded()));
 
             while (!done)
             {
@@ -101,6 +111,7 @@ public class Server implements Runnable
         private PrintWriter out;
         private UserModel user;
         private boolean logeden = false;
+
 
         public ConnectionHandler(Socket client)
         {
@@ -259,8 +270,20 @@ public class Server implements Runnable
                 out = new PrintWriter(client.getOutputStream(),true);
                 in = new BufferedReader(new InputStreamReader(client.getInputStream()));
 
-                String request = "";
+                ObjectOutputStream objectOutputStream = new ObjectOutputStream(client.getOutputStream());
+                objectOutputStream.writeObject(keyPair.getPublic());
 
+                //Receive Session key
+                String encreptSessionKey = in.readLine();
+                byte[] encreptSessionKeyByte = DatatypeConverter.parseHexBinary(encreptSessionKey);
+
+                //decrypt session key
+                String decryptSessionKey =Hyper.Decrept2(encreptSessionKeyByte,keyPair.getPrivate());
+                encreptSessionKeyByte = DatatypeConverter.parseHexBinary(decryptSessionKey);
+                SecretKey secretKey= new SecretKeySpec(encreptSessionKeyByte, 0, encreptSessionKeyByte.length, "AES");
+                System.out.println("The Session key  is: " + DatatypeConverter.printHexBinary(secretKey.getEncoded()));
+
+                String request = "";
                 while ((request = in.readLine()) != null)
                 {
                     if(request.startsWith(Requests.QUIT))
@@ -293,7 +316,7 @@ public class Server implements Runnable
                     }
                 }
             }
-            catch (IOException e)
+            catch (Exception e)
             {
                 shutDown();
             }
