@@ -23,8 +23,6 @@ public class Server implements Runnable
     private ExecutorService pool;
     private boolean done;
 
-    private SecretKey symmetricKey;
-
     public Server()
     {
         connections = new Hashtable<>();
@@ -190,14 +188,15 @@ public class Server implements Runnable
 
                         if(connections.get(to)!=null)
                         {
-                            broadCast(to, Symmetric.encrypt( from + " : " + message, toSymmetricKey));
+                            String messages = from + " : " + message;
+                            String mac = Symmetric.MAC(messages,toSymmetricKey);
+                            broadCast(to, Symmetric.encrypt( messages, toSymmetricKey) + "mac" + mac);
                             return "+"+ from + " : " + message;
                         }
                         else
                         {
                             return  "-"+ from + " : " + message;
                         }
-
                     }
                     else
                     {
