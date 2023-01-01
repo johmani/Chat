@@ -4,6 +4,7 @@ import dataBase.MySqlConnection;
 import model.MessageModel;
 import model.UserModel;
 import security.Hyper;
+import security.SymmetricEncryption;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -22,14 +23,17 @@ import java.util.concurrent.Executors;
 public class Server implements Runnable
 {
     private Hashtable<String,ConnectionHandler> connections;
+    private Hashtable<String,SecretKey> keys;
     private ServerSocket server;
     private ExecutorService pool;
     private boolean done;
     private KeyPair keyPair;
 
+
     public Server()
     {
         connections = new Hashtable<>();
+        keys = new Hashtable<>();
         done = false;
     }
 
@@ -42,7 +46,6 @@ public class Server implements Runnable
             pool = Executors.newCachedThreadPool();
 
             keyPair =  Hyper.generateKeyPair();
-
             System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(keyPair.getPublic().getEncoded()));
             System.out.println("The Private Key is: " + DatatypeConverter.printHexBinary(keyPair.getPrivate().getEncoded()));
 
@@ -65,22 +68,11 @@ public class Server implements Runnable
         }
     }
 
-    public void broadCast(String message)
-    {
-        for(ConnectionHandler ch : connections.values())
-        {
-            if(ch != null)
-            {
-                ch.sendMessage(message);
-            }
-        }
-    }
 
     public void broadCast(String to, String message)
     {
         connections.get(to).sendMessage(message);
     }
-
 
     public void shutDown()
     {
@@ -98,10 +90,7 @@ public class Server implements Runnable
             }
             connections.clear();
         }
-        catch (IOException e)
-        {
-           // ignore
-        }
+        catch (IOException e) {/*ignore*/}
     }
 
     class  ConnectionHandler implements Runnable
@@ -110,7 +99,8 @@ public class Server implements Runnable
         private BufferedReader in;
         private PrintWriter out;
         private UserModel user;
-        private boolean logeden = false;
+        private boolean loggedin = false;
+        private SecretKey sessionKey;
 
 
         public ConnectionHandler(Socket client)
@@ -125,33 +115,33 @@ public class Server implements Runnable
             System.out.println(user.userNumber() + " has quit");
         }
 
-        private void loginCMD(String request)
+        private String loginCMD(String request) throws Exception
         {
             String[] req = request.split("-");
             if(req.length == 3)
             {
                 String response = MySqlConnection.Login(req[1],req[2]);
-                out.println(response);
 
                 if(response.startsWith("Successfully"))
                 {
-                    logeden = true;
+                    loggedin = true;
                     ConnectionHandler connection = connections.remove(user.userNumber());
 
                     user.userNumber(req[1]);
                     user.password(req[2]);
 
                     connections.put(user.userNumber(),connection);
-                    System.out.println(user.userNumber() + " logged in Successfully");
+                    keys.put(user.userNumber(), sessionKey);
                 }
+                return  response;
             }
             else
             {
-                out.println("your request is invalid");
+                return "invalid request";
             }
         }
 
-        private void signupCMD(String request)
+        private String signupCMD(String request)
         {
             String[] req = request.split("-");
             if(req.length == 3)
@@ -159,18 +149,17 @@ public class Server implements Runnable
                 String number = req[1];
                 String password = req[2];
                 String response = MySqlConnection.Signup(number,password);
-                out.println(response);
-                System.out.println(number + " Register Successfully");
+                return  response;
             }
             else
             {
-                out.println("your request is invalid");
+                return "invalid request";
             }
         }
 
-        private  void sendCMD(String request)
+        private String sendCMD(String request) throws Exception
         {
-            if(logeden)
+            if(loggedin)
             {
                 String[] req = request.split("-");
                 if(req.length == 3)
@@ -183,83 +172,110 @@ public class Server implements Runnable
 
                     if(response.equals("isRegister"))
                     {
-
-                        if(connections.get(to)!=null)
-                        {
-                           broadCast(to,from + " : " + message);
-                           out.println("+"+ from + " : " + message);
-                        }
-                        else
-                        {
-                            out.println("-"+ from + " : " + message);
-                        }
                         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
                         LocalDateTime now = LocalDateTime.now();
                         String chatName = from +","+ to;
 
                         MessageModel newMessage = new MessageModel(from,message,dtf.format(now),chatName);
                         MySqlConnection.sendMessage(newMessage);
+
+                        if(connections.get(to)!=null)
+                        {
+                            String messages = from + " : " + message;
+                            String mac = SymmetricEncryption.MAC(messages,keys.get(to));
+                            broadCast(to, SymmetricEncryption.encrypt( messages, keys.get(to)) + "mac" + mac);
+                            return "+"+ from + " : " + message;
+                        }
+                        else
+                        {
+                            return  "-"+ from + " : " + message;
+                        }
                     }
                     else
                     {
-                        out.println(response);
+                        return response;
                     }
                 }
                 else
                 {
-                    out.println("your request is invalid");
+                    return "invalid request";
                 }
             }
             else
             {
-                out.println("you must login first , use /login-number-password to login");
+                return "you must login first , use /login-number-password to login";
             }
         }
 
-        private  void loadMessagesCMD(String request)
+        private ArrayList<String> loadMessagesCMD(String request)
         {
-           if(logeden)
-           {
-               String[] req = request.split("-");
-               if(req.length == 2)
-               {
-                   String to = req[1];
-                   String chat = user.userNumber()+","+to;
-                   ArrayList<String> messages = MySqlConnection.getMessages(chat);
-                   for(String message : messages)
-                   {
-                       out.println(message);
-                   }
-               }
-           }
-           else
-           {
-               out.println("You must login first , use /login-number-password to login");
-           }
+            if(loggedin)
+            {
+                String[] req = request.split("-");
+                if(req.length == 2)
+                {
+                    String to = req[1];
+                    String chat = user.userNumber()+","+to;
+                    ArrayList<String> messages = MySqlConnection.getMessages(chat);
+                    return messages;
+                }
+                else
+                {
+                    ArrayList<String> res = new ArrayList<>();
+                    res.add("your request is invalid");
+                    return res;
+                }
+            }
+            else
+            {
+                ArrayList<String> res = new ArrayList<>();
+                res.add("You must login first , use /login-number-password to login");
+                return res;
+            }
         }
 
-        private  void loadConversationsCMD(String request)
+
+        private ArrayList<String> loadConversationsCMD(String request)
         {
-            if(logeden)
+            if(loggedin)
             {
                 String[] req = request.split("-");
                 if(req.length == 1)
                 {
                     ArrayList<String> conversations = MySqlConnection.getConversations(user.userNumber());
-                    for(String message : conversations)
-                    {
-                        out.println(message);
-                    }
+                    return conversations;
                 }
                 else
                 {
-                    out.println("your request is invalid");
+                    ArrayList<String> res = new ArrayList<>();
+                    res.add("your request is invalid");
+                    return res;
                 }
             }
             else
             {
-                out.println("You must login first , use /login-number-password to login");
+                ArrayList<String> res = new ArrayList<>();
+                res.add("You must login first , use /login-number-password to login");
+                return res;
             }
+        }
+
+        private SecretKey handShaking() throws Exception
+        {
+            PublicKey publicKey = keyPair.getPublic();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(client.getOutputStream());
+            objectOutputStream.writeObject(publicKey);
+
+            //Receive Session key
+            String encreptSessionKey = in.readLine();
+            byte[] encreptSessionKeyByte = DatatypeConverter.parseHexBinary(encreptSessionKey);
+
+            //decrypt session key
+            String decryptSessionKey = Hyper.Decrept(encreptSessionKeyByte,keyPair.getPrivate());
+            encreptSessionKeyByte = DatatypeConverter.parseHexBinary(decryptSessionKey);
+            SecretKey key = new SecretKeySpec(encreptSessionKeyByte, 0, encreptSessionKeyByte.length, "AES");
+
+            return  key;
         }
 
         @Override
@@ -270,54 +286,82 @@ public class Server implements Runnable
                 out = new PrintWriter(client.getOutputStream(),true);
                 in = new BufferedReader(new InputStreamReader(client.getInputStream()));
 
-                ObjectOutputStream objectOutputStream = new ObjectOutputStream(client.getOutputStream());
-                objectOutputStream.writeObject(keyPair.getPublic());
+                sessionKey = handShaking();
 
-                //Receive Session key
-                String encreptSessionKey = in.readLine();
-                byte[] encreptSessionKeyByte = DatatypeConverter.parseHexBinary(encreptSessionKey);
+                if(sessionKey != null)
+                {
+                    String response = "successful handshake";
+                    String mac = SymmetricEncryption.MAC(response,sessionKey);
+                    out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
+                }
+                else
+                {
+                    String response = "wrong handshake";
+                    String mac = SymmetricEncryption.MAC(response,sessionKey);
+                    out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
+                }
+                System.out.println("The Session key  is: " + DatatypeConverter.printHexBinary(sessionKey.getEncoded()));
 
-                //decrypt session key
-                String decryptSessionKey =Hyper.Decrept2(encreptSessionKeyByte,keyPair.getPrivate());
-                encreptSessionKeyByte = DatatypeConverter.parseHexBinary(decryptSessionKey);
-                SecretKey secretKey= new SecretKeySpec(encreptSessionKeyByte, 0, encreptSessionKeyByte.length, "AES");
-                System.out.println("The Session key  is: " + DatatypeConverter.printHexBinary(secretKey.getEncoded()));
 
                 String request = "";
                 while ((request = in.readLine()) != null)
                 {
-                    if(request.startsWith(Requests.QUIT))
+                    String requestDecrypt = SymmetricEncryption.decrypt(request,sessionKey);
+
+                    System.out.println("request : " + request + " --> " + requestDecrypt);
+
+                    if(requestDecrypt.startsWith(Requests.QUIT))
                     {
-                        quitCMD(request);
+                        quitCMD(requestDecrypt);
+                        break;
                     }
-                    else if(request.startsWith(Requests.LOGIN))
+                    else if(requestDecrypt.startsWith(Requests.LOGIN))
                     {
-                        loginCMD(request);
+                        String response = loginCMD(requestDecrypt);
+                        String mac = SymmetricEncryption.MAC(response,sessionKey);
+                        out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
                     }
-                    else if(request.startsWith(Requests.SIGNUP))
+                    else if(requestDecrypt.startsWith(Requests.SIGNUP))
                     {
-                        signupCMD(request);
+                        String response =  signupCMD(requestDecrypt);
+                        String mac = SymmetricEncryption.MAC(response,sessionKey);
+                        out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
                     }
-                    else if(request.startsWith(Requests.SEND))
+                    else if(requestDecrypt.startsWith(Requests.SEND))
                     {
-                        sendCMD(request);
+                        String response =  sendCMD(requestDecrypt);
+                        String mac = SymmetricEncryption.MAC(response,sessionKey);
+                        out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
                     }
-                    else if(request.startsWith(Requests.LOAD_MESSAGES))
+                    else if(requestDecrypt.startsWith(Requests.LOAD_MESSAGES))
                     {
-                        loadMessagesCMD(request);
+                        ArrayList<String> response = loadMessagesCMD(requestDecrypt);
+                        for (String message: response)
+                        {
+                            String mac = SymmetricEncryption.MAC(message,sessionKey);
+                            out.println(SymmetricEncryption.encrypt(message,sessionKey) + "mac" + mac);
+                        }
                     }
-                    else if(request.startsWith(Requests.LOAD_CHATS))
+                    else if(requestDecrypt.startsWith(Requests.LOAD_CHATS))
                     {
-                        loadConversationsCMD(request);
+                        ArrayList<String> response = loadConversationsCMD(requestDecrypt);
+                        for (String message: response)
+                        {
+                            String mac = SymmetricEncryption.MAC(message,sessionKey);
+                            out.println(SymmetricEncryption.encrypt(message,sessionKey) + "mac" + mac);
+                        }
                     }
                     else
                     {
-                        out.println("your request is invalid");
+                        String response = "your request is invalid";
+                        String mac = SymmetricEncryption.MAC(response,sessionKey);
+                        out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
                     }
                 }
             }
             catch (Exception e)
             {
+                e.printStackTrace();
                 shutDown();
             }
         }
@@ -343,12 +387,11 @@ public class Server implements Runnable
         {
             try
             {
+                connections.remove(key);
                 in.close();
                 out.close();
-                connections.remove(key);
                 if (!client.isClosed())
                 {
-
                     client.close();
                 }
             }

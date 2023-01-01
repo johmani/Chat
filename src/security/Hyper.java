@@ -1,12 +1,15 @@
 package security;
 
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.xml.bind.DatatypeConverter;
 import java.security.*;
 
-public class Hyper {
+public class Hyper
+{
     private static final String RSA = "RSA";
 
-    public static KeyPair generateKeyPair() throws Exception
+    public static KeyPair generateKeyPair()throws Exception
     {
         SecureRandom secureRandom = new SecureRandom();
         KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(RSA);
@@ -32,22 +35,27 @@ public class Hyper {
         return new String(result);
     }
 
-
     // Decryption function
-    public static String Decrept2(byte[] cipherText, PrivateKey privateKey) throws Exception
+    public static String Decrept(byte[] cipherText, PrivateKey privateKey) throws Exception
     {
         Cipher cipher = Cipher.getInstance(RSA);
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        cipher.init(Cipher.DECRYPT_MODE,privateKey);
         byte[] result = cipher.doFinal(cipherText);
         return new String(result);
     }
 
-    public static String Decreptsecretkeyserver(byte[] cipherText, PrivateKey privateKey) throws Exception
-    {
-        Cipher cipher = Cipher.getInstance(RSA);
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
-        byte[] result = cipher.doFinal(cipherText);
-        return new String(result);
-    }
 
+    public static void main(String args[]) throws Exception
+    {
+        KeyPair keypair =  Hyper.generateKeyPair();
+
+        System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(keypair.getPublic().getEncoded()));
+        System.out.println("The Private Key is: " + DatatypeConverter.printHexBinary(keypair.getPrivate().getEncoded()));
+
+        SecretKey symmetrickey = SymmetricEncryption.GenerateSessionKey();
+
+        //Encrypt session key
+        byte[] EncryptedKey = Hyper.Encrept(DatatypeConverter.printHexBinary(symmetrickey.getEncoded()),keypair.getPublic());
+
+    }
 }

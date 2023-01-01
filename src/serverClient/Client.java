@@ -1,9 +1,13 @@
 package serverClient;
+
+import security.Hyper;
+import security.SymmetricEncryption;
 import javax.crypto.SecretKey;
 import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.net.Socket;
 import java.security.PublicKey;
+
 
 public class Client implements Runnable
 {
@@ -11,6 +15,27 @@ public class Client implements Runnable
     private BufferedReader in;
     private PrintWriter out;
     private boolean done;
+    private SecretKey symmetricKey;
+
+    public void handShaking() throws Exception
+    {
+        // receive server public key
+        ObjectInputStream objectInputStream = new ObjectInputStream(client.getInputStream());
+        PublicKey serverPublicKey = (PublicKey) objectInputStream.readObject();
+        System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(serverPublicKey.getEncoded()));
+
+        // Generate session Key
+        symmetricKey = SymmetricEncryption.GenerateSessionKey();
+        System.out.println("The Session Key is :" + DatatypeConverter.printHexBinary(symmetricKey.getEncoded()));
+
+        // Encrypt session key
+        byte[] EncryptedKey = Hyper.Encrept(DatatypeConverter.printHexBinary(symmetricKey.getEncoded()),serverPublicKey);
+
+        //send session key
+        System.out.println("The Encrypted Session Key is :" + DatatypeConverter.printHexBinary(EncryptedKey));
+        out.println(DatatypeConverter.printHexBinary(EncryptedKey));
+    }
+
 
     @Override
     public void run()
@@ -21,18 +46,35 @@ public class Client implements Runnable
             out = new PrintWriter(client.getOutputStream(),true);
             in = new BufferedReader(new InputStreamReader(client.getInputStream()));
 
+            handShaking();
+
+
             InputHandler inHandler = new InputHandler();
             Thread thread = new Thread(inHandler);
             thread.start();
 
-            String inMessage;
-            while ((inMessage = in.readLine()) != null)
+            String serverResponse;
+            while ((serverResponse = in.readLine()) != null)
             {
-                System.out.println(inMessage);
+                String response = serverResponse.split("mac")[0];
+                String decrypt = SymmetricEncryption.decrypt(response,symmetricKey);
+
+                String mac = SymmetricEncryption.MAC(decrypt,symmetricKey);
+                String receivedMac = serverResponse.split("mac")[1];
+
+                if(mac.equals(receivedMac))
+                {
+                    System.out.println("correct mac : "+ decrypt);
+                }
+                else
+                {
+                    System.out.println("uncorrect mac : "+ decrypt);
+                }
             }
         }
-        catch (IOException e)
+        catch (Exception e)
         {
+            e.printStackTrace();
            ShutDowm();
         }
     }
@@ -52,8 +94,6 @@ public class Client implements Runnable
     class InputHandler implements Runnable
     {
         BufferedReader inReader;
-        private SecretKey symmetricKey;
-
 
         @Override
         public void run()
@@ -62,39 +102,22 @@ public class Client implements Runnable
            {
                inReader = new BufferedReader(new InputStreamReader(System.in));
 
-               ObjectInputStream objectInputStream = new ObjectInputStream(client.getInputStream());
-               PublicKey serverPublicKey = (PublicKey) objectInputStream.readObject();
-
-
-               System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(serverPublicKey.getEncoded()));
-
-//               // Generate session Key
-//               symmetricKey = symmetric.GenerateSessionKey();
-//               System.out.println("The Session Key is :" + DatatypeConverter.printHexBinary(symmetricKey.getEncoded()));
-//
-//               // Encrypt session key
-//               byte[] EncryptedKey = Hyper.Encrept(DatatypeConverter.printHexBinary(symmetricKey.getEncoded()),serverpublickey);
-//
-//               //send session key
-//               System.out.println("The Encrypted Session Key is :" + DatatypeConverter.printHexBinary(EncryptedKey));
-//               out.println(DatatypeConverter.printHexBinary(EncryptedKey));
-
                while (!done)
                {
                    String  message = inReader.readLine();
                    if(message.equals("/quit"))
                    {
-                       out.println(message);
+                       out.println(SymmetricEncryption.encrypt(message,symmetricKey));
                        inReader.close();
                        ShutDowm();
                    }
                    else
                    {
-                       out.println(message);
+                       out.println(SymmetricEncryption.encrypt(message,symmetricKey));
                    }
                }
            }
-           catch (IOException | ClassNotFoundException e)
+           catch (Exception e)
            {
                ShutDowm();
            }
