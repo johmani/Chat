@@ -3,7 +3,7 @@ package serverClient;
 import dataBase.MySqlConnection;
 import model.MessageModel;
 import model.UserModel;
-import security.Hyper;
+import security.HyperEncryption;
 import security.SymmetricEncryption;
 
 import javax.crypto.SecretKey;
@@ -45,7 +45,7 @@ public class Server implements Runnable
             server = new ServerSocket(4000);
             pool = Executors.newCachedThreadPool();
 
-            keyPair =  Hyper.generateKeyPair();
+            keyPair =  HyperEncryption.generateKeyPair();
             System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(keyPair.getPublic().getEncoded()));
             System.out.println("The Private Key is: " + DatatypeConverter.printHexBinary(keyPair.getPrivate().getEncoded()));
 
@@ -271,7 +271,7 @@ public class Server implements Runnable
             byte[] encreptSessionKeyByte = DatatypeConverter.parseHexBinary(encreptSessionKey);
 
             //decrypt session key
-            String decryptSessionKey = Hyper.Decrept(encreptSessionKeyByte,keyPair.getPrivate());
+            String decryptSessionKey = HyperEncryption.Decrept(encreptSessionKeyByte,keyPair.getPrivate());
             encreptSessionKeyByte = DatatypeConverter.parseHexBinary(decryptSessionKey);
             SecretKey key = new SecretKeySpec(encreptSessionKeyByte, 0, encreptSessionKeyByte.length, "AES");
 
@@ -388,6 +388,8 @@ public class Server implements Runnable
             try
             {
                 connections.remove(key);
+                keys.remove(key);
+
                 in.close();
                 out.close();
                 if (!client.isClosed())

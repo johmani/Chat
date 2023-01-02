@@ -1,6 +1,6 @@
 package serverClient;
 
-import security.Hyper;
+import security.HyperEncryption;
 import security.SymmetricEncryption;
 import javax.crypto.SecretKey;
 import javax.xml.bind.DatatypeConverter;
@@ -22,17 +22,17 @@ public class Client implements Runnable
         // receive server public key
         ObjectInputStream objectInputStream = new ObjectInputStream(client.getInputStream());
         PublicKey serverPublicKey = (PublicKey) objectInputStream.readObject();
-        System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(serverPublicKey.getEncoded()));
+        //System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(serverPublicKey.getEncoded()));
 
         // Generate session Key
         symmetricKey = SymmetricEncryption.GenerateSessionKey();
-        System.out.println("The Session Key is :" + DatatypeConverter.printHexBinary(symmetricKey.getEncoded()));
+        //System.out.println("The Session Key is :" + DatatypeConverter.printHexBinary(symmetricKey.getEncoded()));
 
         // Encrypt session key
-        byte[] EncryptedKey = Hyper.Encrept(DatatypeConverter.printHexBinary(symmetricKey.getEncoded()),serverPublicKey);
+        byte[] EncryptedKey = HyperEncryption.Encrept(DatatypeConverter.printHexBinary(symmetricKey.getEncoded()),serverPublicKey);
 
         //send session key
-        System.out.println("The Encrypted Session Key is :" + DatatypeConverter.printHexBinary(EncryptedKey));
+        //System.out.println("The Encrypted Session Key is :" + DatatypeConverter.printHexBinary(EncryptedKey));
         out.println(DatatypeConverter.printHexBinary(EncryptedKey));
     }
 
