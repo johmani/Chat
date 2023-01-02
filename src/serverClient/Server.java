@@ -3,6 +3,7 @@ package serverClient;
 import dataBase.MySqlConnection;
 import model.MessageModel;
 import model.UserModel;
+import security.DigitalSignature;
 import security.HyperEncryption;
 import security.SymmetricEncryption;
 
@@ -23,7 +24,7 @@ import java.util.concurrent.Executors;
 public class Server implements Runnable
 {
     private Hashtable<String,ConnectionHandler> connections;
-    private Hashtable<String,SecretKey> keys;
+    private Hashtable<String,PublicKey> keys;
     private ServerSocket server;
     private ExecutorService pool;
     private boolean done;
@@ -45,7 +46,7 @@ public class Server implements Runnable
             server = new ServerSocket(4000);
             pool = Executors.newCachedThreadPool();
 
-            keyPair =  HyperEncryption.generateKeyPair();
+            keyPair =  DigitalSignature.generateKeyPair();
             System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(keyPair.getPublic().getEncoded()));
             System.out.println("The Private Key is: " + DatatypeConverter.printHexBinary(keyPair.getPrivate().getEncoded()));
 
@@ -100,8 +101,7 @@ public class Server implements Runnable
         private PrintWriter out;
         private UserModel user;
         private boolean loggedin = false;
-        private SecretKey sessionKey;
-
+        private PublicKey clientPublicKey;
 
         public ConnectionHandler(Socket client)
         {
@@ -131,7 +131,7 @@ public class Server implements Runnable
                     user.password(req[2]);
 
                     connections.put(user.userNumber(),connection);
-                    keys.put(user.userNumber(), sessionKey);
+                    keys.put(user.userNumber(), clientPublicKey);
                 }
                 return  response;
             }
@@ -182,8 +182,7 @@ public class Server implements Runnable
                         if(connections.get(to)!=null)
                         {
                             String messages = from + " : " + message;
-                            String mac = SymmetricEncryption.MAC(messages,keys.get(to));
-                            broadCast(to, SymmetricEncryption.encrypt( messages, keys.get(to)) + "mac" + mac);
+                            broadCast(to, HyperEncryption.Encrept(messages, keys.get(to)));
                             return "+"+ from + " : " + message;
                         }
                         else
@@ -260,7 +259,7 @@ public class Server implements Runnable
             }
         }
 
-        private SecretKey handShaking() throws Exception
+       /* private SecretKey handShaking() throws Exception
         {
             PublicKey publicKey = keyPair.getPublic();
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(client.getOutputStream());
@@ -276,6 +275,17 @@ public class Server implements Runnable
             SecretKey key = new SecretKeySpec(encreptSessionKeyByte, 0, encreptSessionKeyByte.length, "AES");
 
             return  key;
+        }*/
+
+        private PublicKey init() throws Exception
+        {
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(client.getOutputStream());
+            objectOutputStream.writeObject(keyPair.getPublic());
+
+            ObjectInputStream objectInputStream = new ObjectInputStream(client.getInputStream());
+            PublicKey key = (PublicKey) objectInputStream.readObject();
+
+            return  key;
         }
 
         @Override
@@ -286,9 +296,10 @@ public class Server implements Runnable
                 out = new PrintWriter(client.getOutputStream(),true);
                 in = new BufferedReader(new InputStreamReader(client.getInputStream()));
 
-                sessionKey = handShaking();
+                clientPublicKey = init();
+                System.out.println("The clientPublicKey key  is: " + DatatypeConverter.printHexBinary(clientPublicKey.getEncoded()));
 
-                if(sessionKey != null)
+                /*if(sessionKey != null)
                 {
                     String response = "successful handshake";
                     String mac = SymmetricEncryption.MAC(response,sessionKey);
@@ -299,16 +310,20 @@ public class Server implements Runnable
                     String response = "wrong handshake";
                     String mac = SymmetricEncryption.MAC(response,sessionKey);
                     out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
-                }
-                System.out.println("The Session key  is: " + DatatypeConverter.printHexBinary(sessionKey.getEncoded()));
+                }*/
 
 
                 String request = "";
                 while ((request = in.readLine()) != null)
                 {
-                    String requestDecrypt = SymmetricEncryption.decrypt(request,sessionKey);
+                    String req = request.split("DS")[0];
+                    String recevedDs = request.split("DS")[1];
 
-                    System.out.println("request : " + request + " --> " + requestDecrypt);
+                    String requestDecrypt = HyperEncryption.Decrept(req,keyPair.getPrivate());
+
+                    boolean verification = DigitalSignature.verifyDigitalSignature(requestDecrypt.getBytes(), recevedDs, clientPublicKey);
+                    System.out.println("Verification : " + verification + " --> " + requestDecrypt);
+
 
                     if(requestDecrypt.startsWith(Requests.QUIT))
                     {
@@ -318,28 +333,24 @@ public class Server implements Runnable
                     else if(requestDecrypt.startsWith(Requests.LOGIN))
                     {
                         String response = loginCMD(requestDecrypt);
-                        String mac = SymmetricEncryption.MAC(response,sessionKey);
-                        out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
+                        out.println(HyperEncryption.Encrept(response,clientPublicKey));
                     }
                     else if(requestDecrypt.startsWith(Requests.SIGNUP))
                     {
                         String response =  signupCMD(requestDecrypt);
-                        String mac = SymmetricEncryption.MAC(response,sessionKey);
-                        out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
+                        out.println(HyperEncryption.Encrept(response,clientPublicKey));
                     }
                     else if(requestDecrypt.startsWith(Requests.SEND))
                     {
                         String response =  sendCMD(requestDecrypt);
-                        String mac = SymmetricEncryption.MAC(response,sessionKey);
-                        out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
+                        out.println(HyperEncryption.Encrept(response,clientPublicKey));
                     }
                     else if(requestDecrypt.startsWith(Requests.LOAD_MESSAGES))
                     {
                         ArrayList<String> response = loadMessagesCMD(requestDecrypt);
                         for (String message: response)
                         {
-                            String mac = SymmetricEncryption.MAC(message,sessionKey);
-                            out.println(SymmetricEncryption.encrypt(message,sessionKey) + "mac" + mac);
+                            out.println(HyperEncryption.Encrept(message,clientPublicKey));
                         }
                     }
                     else if(requestDecrypt.startsWith(Requests.LOAD_CHATS))
@@ -347,15 +358,13 @@ public class Server implements Runnable
                         ArrayList<String> response = loadConversationsCMD(requestDecrypt);
                         for (String message: response)
                         {
-                            String mac = SymmetricEncryption.MAC(message,sessionKey);
-                            out.println(SymmetricEncryption.encrypt(message,sessionKey) + "mac" + mac);
+                            out.println(HyperEncryption.Encrept(message,clientPublicKey));
                         }
                     }
                     else
                     {
                         String response = "your request is invalid";
-                        String mac = SymmetricEncryption.MAC(response,sessionKey);
-                        out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
+                        out.println(HyperEncryption.Encrept(response,clientPublicKey));
                     }
                 }
             }
@@ -377,7 +386,6 @@ public class Server implements Runnable
                 out.close();
                 if (!client.isClosed())
                 {
-
                     client.close();
                 }
             }

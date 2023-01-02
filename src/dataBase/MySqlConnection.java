@@ -104,7 +104,7 @@ public class MySqlConnection
                 {
                     if(pass.equals(user.getString("password")))
                     {
-                        return "Successfully logged in" + " :  " + user.getString("number");
+                        return "Successfully logged in" + " :" + user.getInt("user_id") + ":" + user.getString("number");
                     }
                     else
                     {
