@@ -278,8 +278,6 @@ public class Server implements Runnable
 
                 while ((request = in.readLine()) != null)
                 {
-                    //System.out.print("request : " + request + " --> ");
-
                     if(request.startsWith(Requests.QUIT))
                     {
                         quitCMD(request);
@@ -289,11 +287,13 @@ public class Server implements Runnable
                     {
                         String response = loginCMD(request);
                         out.println(response);
+                        System.out.println(request);
                     }
                     else if(request.startsWith(Requests.SIGNUP))
                     {
                         String response =  signupCMD(request);
                         out.println(response);
+                        System.out.println(request);
                     }
                     else
                     {
@@ -335,7 +335,6 @@ public class Server implements Runnable
             }
             catch (Exception e)
             {
-                e.printStackTrace();
                 shutDown();
             }
         }

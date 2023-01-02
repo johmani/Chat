@@ -73,8 +73,7 @@ public class Client implements Runnable
         }
         catch (Exception e)
         {
-           e.printStackTrace();
-           ShutDowm();
+            ShutDowm();
         }
     }
 
