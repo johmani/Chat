@@ -2,14 +2,11 @@ package serverClient;
 
 import security.DigitalSignature;
 import security.HyperEncryption;
-import security.SymmetricEncryption;
-import javax.crypto.SecretKey;
 import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.net.Socket;
 import java.security.KeyPair;
 import java.security.PublicKey;
-
 
 public class Client implements Runnable
 {
@@ -28,7 +25,7 @@ public class Client implements Runnable
         ObjectInputStream objectInputStream = new ObjectInputStream(client.getInputStream());
         PublicKey key = (PublicKey) objectInputStream.readObject();
 
-        // send public key
+        // send public to server key
         ObjectOutputStream objectOutputStream = new ObjectOutputStream(client.getOutputStream());
         objectOutputStream.writeObject(keyPair.getPublic());
 
@@ -98,8 +95,9 @@ public class Client implements Runnable
                    String request = inReader.readLine();
                    if(request.equals("/quit"))
                    {
-                       out.println(request);
-                       //out.println(SymmetricEncryption.encrypt(message,symmetricKey));
+                       String strDs =  DigitalSignature.createDigitalSignature(request.getBytes(),keyPair.getPrivate());
+                       String strMess = HyperEncryption.Encrept(request ,serverPublicKey);
+                       out.println(strMess + "DS" + strDs);
                        inReader.close();
                        ShutDowm();
                    }
