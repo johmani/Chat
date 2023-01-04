@@ -14,7 +14,6 @@ public class DigitalSignature
 {
     private static final String SIGNING_ALGORITHM = "SHA256withRSA";
     private static final String RSA = "RSA";
-    private static Scanner sc;
 
     // Function to implement Digital signature
     // using SHA256 and RSA algorithm

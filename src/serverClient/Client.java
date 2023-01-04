@@ -16,7 +16,7 @@ public class Client implements Runnable
     private boolean done;
     private KeyPair keyPair;
     private PublicKey serverPublicKey;
-
+    
 
 
     private PublicKey init() throws Exception
@@ -48,7 +48,6 @@ public class Client implements Runnable
 
             serverPublicKey = init();
             System.out.println("The Server Public Key is: " + DatatypeConverter.printHexBinary(serverPublicKey.getEncoded()));
-
 
             InputHandler inHandler = new InputHandler();
             Thread thread = new Thread(inHandler);
