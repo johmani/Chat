@@ -15,7 +15,7 @@ public class SymmetricEncryption
 
     public static SecretKey createAESKey(String password) throws Exception
     {
-        SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
+        SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDFhHmacSHA512");
         KeySpec passwordBasedEncryptionKeySpec = new PBEKeySpec(password.toCharArray(), key.getBytes(), 12288, 128);
         SecretKey secretKeyFromPBKDF2 = secretKeyFactory.generateSecret(passwordBasedEncryptionKeySpec);
         SecretKey symmetricKey = new SecretKeySpec(secretKeyFromPBKDF2.getEncoded(), "AES");

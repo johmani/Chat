@@ -297,8 +297,20 @@ public class Server implements Runnable
                     }
                     else
                     {
-                        String requestDecrypt = Symmetric.decrypt(request,symmetricKey);
-                        System.out.println("request : " + request + " --> " + requestDecrypt);
+                        String req = request.split("mac")[0];
+                        String requestDecrypt = Symmetric.decrypt(req,symmetricKey);
+                        String reqMac = Symmetric.MAC(requestDecrypt,symmetricKey);
+                        String receivedMac = request.split("mac")[1];
+
+                        if(reqMac.equals(receivedMac))
+                        {
+                            System.out.println("correct mac : " + request + " --> " + requestDecrypt);
+                        }
+                        else
+                        {
+                            System.out.println("uncorrect mac : " + request + " --> " + requestDecrypt);
+                        }
+
 
                         if(requestDecrypt.startsWith(Requests.SEND))
                         {

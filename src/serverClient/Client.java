@@ -102,22 +102,23 @@ public class Client implements Runnable
 
                while (!done)
                {
-                   String  message = inReader.readLine();
-                   if(message.equals("/quit"))
+                   String  request = inReader.readLine();
+                   if(request.equals("/quit"))
                    {
-                       out.println(message);
+                       out.println(request);
                        inReader.close();
                        ShutDowm();
                    }
-                   else if(message.startsWith("/login") || message.startsWith("/signup"))
+                   else if(request.startsWith("/login") || request.startsWith("/signup"))
                    {
-                       out.println(message);
+                       out.println(request);
                    }
                    else
                    {
                        if(loggedin)
                        {
-                           out.println(Symmetric.encrypt(message,symmetricKey));
+                           String mac = Symmetric.MAC(request,symmetricKey);
+                           out.println(Symmetric.encrypt(request,symmetricKey) + "mac" + mac);
                        }
                        else
                        {
