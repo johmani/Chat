@@ -22,6 +22,7 @@ public class SymmetricEncryption
         return symmetricKey;
     }
 
+
     public static SecretKey createAESKey() throws Exception
     {
         SecureRandom securerandom = new SecureRandom();
@@ -30,6 +31,7 @@ public class SymmetricEncryption
         SecretKey key = keygenerator.generateKey();
         return key;
     }
+
 
     public static SecretKey GenerateSessionKey() throws NoSuchAlgorithmException
     {
@@ -43,7 +45,7 @@ public class SymmetricEncryption
     {
         Mac mac = Mac.getInstance("HMACSHA1");
         mac.init(symmetricKey);
-        mac.update(request.toString().getBytes());
+        mac.update(request.getBytes());
         byte[] macResult = mac.doFinal();
         return java.util.Arrays.toString(macResult);
     }
