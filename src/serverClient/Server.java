@@ -5,10 +5,6 @@ import model.MessageModel;
 import model.UserModel;
 import security.DigitalSignature;
 import security.HyperEncryption;
-import security.SymmetricEncryption;
-
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.net.ServerSocket;
@@ -260,24 +256,6 @@ public class Server implements Runnable
             }
         }
 
-       /* private SecretKey handShaking() throws Exception
-        {
-            PublicKey publicKey = keyPair.getPublic();
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(client.getOutputStream());
-            objectOutputStream.writeObject(publicKey);
-
-            //Receive Session key
-            String encreptSessionKey = in.readLine();
-            byte[] encreptSessionKeyByte = DatatypeConverter.parseHexBinary(encreptSessionKey);
-
-            //decrypt session key
-            String decryptSessionKey = HyperEncryption.Decrept(encreptSessionKeyByte,keyPair.getPrivate());
-            encreptSessionKeyByte = DatatypeConverter.parseHexBinary(decryptSessionKey);
-            SecretKey key = new SecretKeySpec(encreptSessionKeyByte, 0, encreptSessionKeyByte.length, "AES");
-
-            return  key;
-        }*/
-
         private PublicKey init() throws Exception
         {
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(client.getOutputStream());
@@ -299,20 +277,6 @@ public class Server implements Runnable
 
                 clientPublicKey = init();
                 System.out.println("The clientPublicKey key  is: " + DatatypeConverter.printHexBinary(clientPublicKey.getEncoded()));
-
-                /*if(sessionKey != null)
-                {
-                    String response = "successful handshake";
-                    String mac = SymmetricEncryption.MAC(response,sessionKey);
-                    out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
-                }
-                else
-                {
-                    String response = "wrong handshake";
-                    String mac = SymmetricEncryption.MAC(response,sessionKey);
-                    out.println(SymmetricEncryption.encrypt(response,sessionKey) + "mac" + mac);
-                }*/
-
 
                 String request = "";
                 while ((request = in.readLine()) != null)

@@ -16,7 +16,7 @@ public class Client implements Runnable
     private boolean done;
     private KeyPair keyPair;
     private PublicKey serverPublicKey;
-    
+
 
 
     private PublicKey init() throws Exception
