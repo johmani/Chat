@@ -47,6 +47,7 @@ public class Server implements Runnable
             pool = Executors.newCachedThreadPool();
 
             keyPair =  DigitalSignature.generateKeyPair();
+
             System.out.println("The Public Key is: " + DatatypeConverter.printHexBinary(keyPair.getPublic().getEncoded()));
             System.out.println("The Private Key is: " + DatatypeConverter.printHexBinary(keyPair.getPrivate().getEncoded()));
 
